@@ -23,6 +23,7 @@ Here's what's currently running in my homelab:
 | **Homepage** | Main dashboard for all services | 3000 | http://localhost:3000 |
 | **Portainer** | Docker container management | 9000 | http://localhost:9000 |
 | **Cloudflare Tunnel** | Secure remote access | N/A | Various subdomains |
+| **Tailscale** | VPN for secure remote access | N/A | Via Tailscale client |
 | **Glances** | System monitoring | 61208 | http://localhost:61208 |
 | **qBittorrent** | Torrent client | 8082 | http://localhost:8082 |
 | **Plex** | Media server | Host networking | http://localhost:32400/web |
@@ -89,6 +90,7 @@ Key variables include:
 | `PLEX_CLAIM` | Plex claim token | (user provided) |
 | `WEBUI_USERNAME` | qBittorrent username | admin |
 | `WEBUI_PASSWORD` | qBittorrent password | adminadmin |
+| `TAILSCALE_AUTH_KEY` | Tailscale authentication key | (user provided) |
 
 A `.env.example` file is included as a reference.
 
@@ -100,6 +102,7 @@ Security was a priority when designing this setup:
 - **Minimal permissions** - Docker containers run with the minimum required access
 - **Safe Docker socket access** - Socket is exposed securely to prevent unauthorized container access
 - **Automatic secret generation** - The script can generate secure random tokens for services
+- **VPN Access** - Tailscale provides secure access without exposing services directly to the internet
 
 ## 📁 Project Structure
 
@@ -136,9 +139,14 @@ homelab-server/
 │   ├── docker-compose.yaml
 │   └── install.sh
 │
-└── qbittorrent/          # qBittorrent torrent client
+├── qbittorrent/          # qBittorrent torrent client
+│   ├── docker-compose.yaml
+│   └── install.sh
+│
+└── tailscale/            # Tailscale VPN for remote access
     ├── docker-compose.yaml
-    └── install.sh
+    ├── install.sh
+    └── README.md         # Tailscale-specific documentation
 ```
 
 ## 🧰 Expandability
@@ -172,12 +180,34 @@ Feel free to adjust these settings in the docker-compose files to match your req
 
 ## 🌐 Remote Access
 
-I use Cloudflare Tunnels for secure remote access to my services. I use the free tier, which allows me to access my services through a secure tunnel without exposing my server to the internet. I choose not to use configuration files for tunnels, as with the web interface you can guarantee no downtime when updating configs.
+I provide two options for remote access to my homelab:
+
+### Cloudflare Tunnels
+
+For public-facing services, I use Cloudflare Tunnels on the free tier. This allows me to expose specific services through a secure tunnel without opening ports on my router.
 
 To use this feature with your own domain:
 1. Create a Cloudflare account
 2. Set up a tunnel for your domain
 3. Update the `CLOUDFLARE_TUNNEL_TOKEN` in your `.env` file
+
+### Tailscale VPN
+
+For more secure, private access to all services, I use Tailscale. This mesh VPN allows me to connect to my homelab from anywhere without exposing services directly to the internet.
+
+Key features:
+- **Zero configuration** networking - no port forwarding needed
+- **End-to-end encryption** for all traffic
+- **Access control** through Tailscale's admin console
+- **Exit node capability** - route all your internet traffic through your home connection when on public WiFi
+
+Setup:
+1. Create a Tailscale account at [https://tailscale.com/](https://tailscale.com/)
+2. Generate an auth key in the admin console
+3. Add the key to your `.env` file as `TAILSCALE_AUTH_KEY`
+4. Run the installation script
+
+Once set up, you can connect to your homelab services using the Tailscale IP address from any device with the Tailscale client installed.
 
 ## 🤖 Development Notes
 
