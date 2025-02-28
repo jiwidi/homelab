@@ -1,0 +1,16 @@
+services:
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openwebui
+    restart: unless-stopped
+    ports:
+      - 8083:8080
+    environment:
+      - OLLAMA_API_BASE_URL=http://host.docker.internal:11434  # Connect to local Ollama
+      - ENABLE_SIGNUP=true  # Enable user registration
+    volumes:
+      - openwebui_data:/app/backend/data  # Persistent storage for UI data
+    depends_on: []
+
+volumes:
+  openwebui_data:

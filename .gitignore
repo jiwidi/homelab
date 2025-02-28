@@ -1,0 +1,25 @@
+# Ignore config folders
+config/
+
+# Ignore env files
+.env
+**/.env
+
+# Ignore generated config files from templates
+**/config.yaml
+**/credentials.json
+
+# Temporary files
+.DS_Store
+*.tmp
+*.bak
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock

@@ -1,0 +1,18 @@
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    network_mode: host  # Allows better connectivity for torrents
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm  # Set to Stockholm timezone
+      - WEBUI_PORT=8082  # Change port if needed
+      - QBT_CONFIG_DIR=/config  # Config storage
+      - QBT_DOWNLOAD_DIR=/videos  # Set /videos as the download folder
+      - WEBUI_USERNAME=${WEBUI_USERNAME}
+      - WEBUI_PASSWORD=${WEBUI_PASSWORD}
+    volumes:
+      - ./config:/config  # Stores qBittorrent settings
+      - ~/Videos:/videos  # Maps the ~/Videos directory as the download folder
