@@ -1,5 +1,8 @@
 # Ignore config folders
 config/
+bluemap-data/
+backups/
+priv/
 
 # Ignore env files
 .env

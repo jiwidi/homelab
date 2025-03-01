@@ -1,0 +1,24 @@
+services:
+  transmission:
+    image: linuxserver/transmission
+    container_name: transmission
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Stockholm
+
+    volumes:
+      - ./config:/config         # Configuration directory
+      - ~/torrents:/downloads      # Download directory
+      - ./watch:/watch           # Watch directory for auto-adding torrents
+    ports:
+      - "9091:9091"              # Web UI
+      - "51413:51413"            # Torrent port TCP
+      - "51413:51413/udp"        # Torrent port UDP
+    networks:
+      - transmission_network
+
+networks:
+  transmission_network:
+    driver: bridge

@@ -25,7 +25,7 @@ Here's what's currently running in my homelab:
 | **Cloudflare Tunnel** | Secure remote access | N/A | Various subdomains |
 | **Tailscale** | VPN for secure remote access | N/A | Via Tailscale client |
 | **Glances** | System monitoring | 61208 | http://localhost:61208 |
-| **qBittorrent** | Torrent client | 8082 | http://localhost:8082 |
+| **Transmission** | Torrent client | 9091 | http://localhost:9091 |
 | **Plex** | Media server | Host networking | http://localhost:32400/web |
 | **Excalidraw** | Collaborative drawing tool | 3030 | http://localhost:3030 |
 | **Ollama + OpenWebUI** | Self-hosted AI/LLM service | 8083 | http://localhost:8083 |
@@ -88,8 +88,6 @@ Key variables include:
 | `HOMEPAGE_AUTH_TOKEN` | Homepage dashboard auth token | (randomly generated) |
 | `SPEEDTEST_APP_KEY` | Speedtest app auth key | (randomly generated) |
 | `PLEX_CLAIM` | Plex claim token | (user provided) |
-| `WEBUI_USERNAME` | qBittorrent username | admin |
-| `WEBUI_PASSWORD` | qBittorrent password | adminadmin |
 | `TAILSCALE_AUTH_KEY` | Tailscale authentication key | (user provided) |
 
 A `.env.example` file is included as a reference.
@@ -139,7 +137,7 @@ homelab-server/
 │   ├── docker-compose.yaml
 │   └── install.sh
 │
-├── qbittorrent/          # qBittorrent torrent client
+├── transmission/         # Transmission torrent client
 │   ├── docker-compose.yaml
 │   └── install.sh
 │
