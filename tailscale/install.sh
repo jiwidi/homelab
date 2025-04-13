@@ -13,7 +13,7 @@ if [ -z "$TAILSCALE_AUTH_KEY" ]; then
 fi
 
 # Run the Tailscale container
-docker-compose -f "$DIR/docker-compose.yaml" up -d
+docker compose --file "$DIR/docker-compose.yaml" up -d
 
 echo "Tailscale container started. You can verify your Tailscale connection at:"
 echo "https://login.tailscale.com/admin/machines"

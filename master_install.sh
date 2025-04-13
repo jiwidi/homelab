@@ -23,12 +23,62 @@ else
   echo -e "${GREEN}Homebrew is already installed.${NC}"
 fi
 
-# Check for Docker; install if missing.
+# Check for Colima; install if missing.
+if ! command -v colima >/dev/null; then
+  echo -e "${YELLOW}Colima not found. Installing Colima...${NC}"
+  brew install colima
+else
+  echo -e "${GREEN}Colima is already installed.${NC}"
+fi
+
+# Check for Docker CLI; install if missing (Colima needs this).
 if ! command -v docker >/dev/null; then
-  echo -e "${YELLOW}Docker not found. Installing Docker...${NC}"
+  echo -e "${YELLOW}Docker CLI not found. Installing Docker CLI...${NC}"
   brew install docker
 else
-  echo -e "${GREEN}Docker is already installed.${NC}"
+  echo -e "${GREEN}Docker CLI is already installed.${NC}"
+fi
+
+# Check for Docker Compose; install if missing.
+if ! command -v docker-compose >/dev/null; then
+    # Also check for docker compose plugin
+    if ! docker-compose version >/dev/null 2>&1; then
+        echo -e "${YELLOW}Docker Compose not found. Installing Docker Compose...${NC}"
+        brew install docker-compose
+
+        # Fix for docker compose
+        mkdir -p ~/.docker/cli-plugins
+        ln -sfn $HOMEBREW_PREFIX/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
+    else
+         echo -e "${GREEN}Docker Compose plugin is already installed.${NC}"
+    fi
+else
+  echo -e "${GREEN}Docker Compose (standalone) is already installed.${NC}"
+fi
+
+# Start Colima if not already running
+if ! colima status > /dev/null 2>&1; then
+  echo -e "${YELLOW}Starting Colima...${NC}"
+  colima start
+  echo -e "${GREEN}Colima started.${NC}"
+else
+  echo -e "${GREEN}Colima is already running.${NC}"
+fi
+
+# Check for potential Colima resource allocation message and inform user
+if colima status | grep -q "colima is running"; then
+    echo -e "${GREEN}Colima status check successful.${NC}"
+else
+    echo -e "${YELLOW}Could not determine Colima resource allocation details, but proceeding.${NC}"
+fi
+# Check Colima resources
+COLIMA_CPU=$(colima list -j | grep -o '"cpu":[0-9]*' | cut -d':' -f2)
+COLIMA_MEMORY=$(colima list -j | grep -o '"memory":[0-9]*' | cut -d':' -f2)
+
+if [ ! -z "$COLIMA_CPU" ] && [ ! -z "$COLIMA_MEMORY" ]; then
+  echo -e "${BLUE}Colima is using ${GREEN}$COLIMA_CPU${BLUE} CPUs and ${GREEN}$COLIMA_MEMORY${BLUE} GB of RAM.${NC}"
+else
+  echo -e "${YELLOW}Could not determine Colima resource allocation.${NC}"
 fi
 
 # Check for tmux
@@ -109,8 +159,11 @@ fi
 # Define the source folder containing all services.
 SRC_DIR="$(dirname "$0")/"
 
-# Export all variables from .env for use in docker-compose files
-export $(grep -v '^#' "$ENV_FILE" | xargs)
+# Export all variables from .env for use in docker compose files
+# Source .env file safely exporting all variables
+set -a # automatically export all variables
+source "$ENV_FILE"
+set +a # stop automatically exporting
 
 # Iterate over each service folder
 echo -e "${BLUE}Installing services...${NC}"
@@ -130,7 +183,7 @@ done
 echo -e "${BLUE}=========================================${NC}"
 echo -e "${GREEN}All services have been installed successfully!${NC}"
 echo -e "${YELLOW}Tips:${NC}"
-echo -e "  - To view running containers: ${BLUE}docker ps${NC}"
+echo -e "  - To view running containers (via Docker CLI connected to Colima): ${BLUE}docker ps${NC}"
 echo -e "  - Access your dashboard at: ${BLUE}http://localhost:3000${NC}"
-echo -e "  - Portainer is available at: ${BLUE}http://localhost:9000${NC}"
+echo -e "  - Dockge is available at: ${BLUE}http://localhost:5001${NC}"
 echo -e "${BLUE}=========================================${NC}"

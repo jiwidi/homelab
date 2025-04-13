@@ -39,4 +39,4 @@ fi
 
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
-docker-compose -f "$DIR/docker-compose.yaml" up -d
+docker compose --file "$DIR/docker-compose.yaml" up -d

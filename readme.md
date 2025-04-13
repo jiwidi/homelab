@@ -21,7 +21,7 @@ Here's what's currently running in my homelab:
 | Service | Description | Port | URL |
 |---------|-------------|------|-----|
 | **Homepage** | Main dashboard for all services | 3000 | http://localhost:3000 |
-| **Portainer** | Docker container management | 9000 | http://localhost:9000 |
+| **Dockge** | Docker Compose stack management | 5001 | http://localhost:5001 |
 | **Cloudflare Tunnel** | Secure remote access | N/A | Various subdomains |
 | **Tailscale** | VPN for secure remote access | N/A | Via Tailscale client |
 | **Glances** | System monitoring | 61208 | http://localhost:61208 |
@@ -30,6 +30,7 @@ Here's what's currently running in my homelab:
 | **Excalidraw** | Collaborative drawing tool | 3030 | http://localhost:3030 |
 | **Ollama + OpenWebUI** | Self-hosted AI/LLM service | 8083 | http://localhost:8083 |
 | **Speedtest Tracker** | Internet speed monitoring | 8081 | http://localhost:8081 |
+| **Vert** |  | 3002 | http://localhost:3002 | (Build from source)
 
 ## 🚀 Installation
 
@@ -133,11 +134,15 @@ homelab-server/
 │   ├── docker-compose.yaml
 │   └── install.sh
 │
-├── portainer/            # Portainer container management
+├── dockge/               # Dockge Compose stack management
 │   ├── docker-compose.yaml
 │   └── install.sh
 │
 ├── transmission/         # Transmission torrent client
+│   ├── docker-compose.yaml
+│   └── install.sh
+│
+├── vert/                 # Vert service
 │   ├── docker-compose.yaml
 │   └── install.sh
 │
@@ -163,7 +168,7 @@ Example `install.sh` template:
 #!/bin/bash
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
-docker-compose -f "$DIR/docker-compose.yaml" up -d
+docker compose --file "$DIR/docker-compose.yaml" up -d
 ```
 
 ### Personal Customizations
@@ -174,7 +179,7 @@ I've made several customizations for my specific needs:
 - **Swedish Timezone**: Services are configured for Europe/Stockholm timezone
 - **Cloudflare Tunnels**: Set up for my domain (jiwidi.com) and subdomains
 
-Feel free to adjust these settings in the docker-compose files to match your requirements.
+Feel free to adjust these settings in the docker compose files to match your requirements.
 
 ## 🌐 Remote Access
 

@@ -26,3 +26,6 @@ pids
 *.pid
 *.seed
 *.pid.lock
+
+# Specific folders
+dockge/data/*
