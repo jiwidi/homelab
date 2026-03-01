@@ -1,0 +1,18 @@
+services:
+  vert:
+    container_name: vert
+    build:
+      context: ./vert-source
+      dockerfile: Dockerfile
+      args:
+        PUB_HOSTNAME: ${PUB_HOSTNAME:-vert.sh}
+        PUB_PLAUSIBLE_URL: ${PUB_PLAUSIBLE_URL:-https://plausible.example.com}
+        PUB_ENV: ${PUB_ENV:-production}
+    environment:
+      - PUB_HOSTNAME=${PUB_HOSTNAME:-vert.sh}
+      - PUB_PLAUSIBLE_URL=${PUB_PLAUSIBLE_URL:-https://plausible.example.com}
+      - PUB_ENV=${PUB_ENV:-production}
+      - PORT=${PORT:-3002}
+    restart: unless-stopped
+    ports:
+      - ${PORT:-3002}:80

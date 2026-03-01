@@ -1,0 +1,9 @@
+services:
+  muse:
+    image: ghcr.io/museofficial/muse:pr-1256
+    restart: always
+    volumes:
+      - ./muse:/data
+    environment:
+      - DISCORD_TOKEN=${MUSE_DISCORD_TOKEN}
+      - YOUTUBE_API_KEY=${MUSE_YOUTUBE_API_KEY}

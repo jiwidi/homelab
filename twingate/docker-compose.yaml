@@ -1,0 +1,10 @@
+services:
+  twingate:
+    image: twingate/connector:latest
+    container_name: twingate
+    restart: unless-stopped
+    environment:
+      - TWINGATE_NETWORK=${TWINGATE_NETWORK}
+      - TWINGATE_ACCESS_TOKEN=${TWINGATE_ACCESS_TOKEN}
+      - TWINGATE_REFRESH_TOKEN=${TWINGATE_REFRESH_TOKEN}
+    network_mode: host

@@ -101,8 +101,13 @@ else
   # Create .env file with prompts for required secrets
   echo -e "${BLUE}Please provide the following configuration values:${NC}"
 
-  # Cloudflare
-  read -p "Cloudflare Tunnel Token: " CLOUDFLARE_TUNNEL_TOKEN
+  # Traefik/Authelia Domain
+  read -p "Enter your base domain (e.g., homelab.local or yourdomain.com): " DOMAIN
+  # Ensure DOMAIN is set
+  while [ -z "$DOMAIN" ]; do
+    echo -e "${RED}Domain cannot be empty.${NC}"
+    read -p "Enter your base domain (e.g., homelab.local or yourdomain.com): " DOMAIN
+  done
 
   # Homepage
   read -p "Homepage AUTH_TOKEN (press Enter for random): " HOMEPAGE_AUTH_TOKEN
@@ -129,10 +134,29 @@ else
   echo
   WEBUI_PASSWORD=${WEBUI_PASSWORD:-adminadmin}
 
+  # Twingate
+  read -p "Twingate network name (e.g., fhjaime96): " TWINGATE_NETWORK
+  while [ -z "$TWINGATE_NETWORK" ]; do
+    echo -e "${RED}Twingate network name cannot be empty.${NC}"
+    read -p "Twingate network name (e.g., fhjaime96): " TWINGATE_NETWORK
+  done
+
+  read -p "Twingate connector access token: " TWINGATE_ACCESS_TOKEN
+  while [ -z "$TWINGATE_ACCESS_TOKEN" ]; do
+    echo -e "${RED}Twingate access token cannot be empty.${NC}"
+    read -p "Twingate connector access token: " TWINGATE_ACCESS_TOKEN
+  done
+
+  read -p "Twingate connector refresh token: " TWINGATE_REFRESH_TOKEN
+  while [ -z "$TWINGATE_REFRESH_TOKEN" ]; do
+    echo -e "${RED}Twingate refresh token cannot be empty.${NC}"
+    read -p "Twingate connector refresh token: " TWINGATE_REFRESH_TOKEN
+  done
+
   # Create .env file
   cat > "$ENV_FILE" <<EOL
-# Cloudflare
-CLOUDFLARE_TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+# General
+DOMAIN=${DOMAIN}
 
 # Homepage/Speedtest
 HOMEPAGE_AUTH_TOKEN=${HOMEPAGE_AUTH_TOKEN}
@@ -144,6 +168,12 @@ PLEX_CLAIM=${PLEX_CLAIM}
 # qBittorrent
 WEBUI_USERNAME=${WEBUI_USERNAME}
 WEBUI_PASSWORD=${WEBUI_PASSWORD}
+
+# Twingate
+TWINGATE_NETWORK=${TWINGATE_NETWORK}
+TWINGATE_ACCESS_TOKEN=${TWINGATE_ACCESS_TOKEN}
+TWINGATE_REFRESH_TOKEN=${TWINGATE_REFRESH_TOKEN}
+
 EOL
 
   echo -e "${GREEN}.env file created successfully${NC}"
@@ -170,6 +200,13 @@ echo -e "${BLUE}Installing services...${NC}"
 for service in "$SRC_DIR"/*; do
   if [ -d "$service" ] && [ -f "$service/install.sh" ]; then
     SERVICE_NAME=$(basename "$service")
+
+    # Skip services replaced by Twingate
+    if [[ "$SERVICE_NAME" == "traefik" || "$SERVICE_NAME" == "tailscale" ]]; then
+      echo -e "${YELLOW}Skipping $SERVICE_NAME (replaced by Twingate)${NC}"
+      continue
+    fi
+
     echo -e "${BLUE}=========================================${NC}"
     echo -e "${YELLOW}Spinning $SERVICE_NAME...${NC}"
 

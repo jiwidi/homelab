@@ -3,7 +3,7 @@ config/
 bluemap-data/
 backups/
 priv/
-
+cache/
 # Ignore env files
 .env
 **/.env
@@ -29,3 +29,7 @@ pids
 
 # Specific folders
 dockge/data/*
+trash/
+games/zomboid/workshop-mods/
+games/zomboid/data/
+vert/vert-source/
