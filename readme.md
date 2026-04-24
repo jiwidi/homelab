@@ -10,7 +10,7 @@ Docker configurations and install scripts for my personal homelab on a Mac Mini 
 
 ## Services
 
-### Always-on
+### Always-on (Docker)
 
 | Service | Description | Port |
 |---------|-------------|------|
@@ -18,9 +18,26 @@ Docker configurations and install scripts for my personal homelab on a Mac Mini 
 | **Homepage** | Dashboard | 3000 |
 | **Speedtest Tracker** | Internet speed monitoring | 8081 |
 | **Glances** | System monitoring | 61208 |
-| **Twingate** | Remote access connector | — |
+| **Twingate** | Private remote access connector | — |
+| **Cloudflare Tunnel** | Public ingress for selected services | — |
+| **Playit** | Tunnel for game server ports | — |
+| **Open WebUI** | Chat UI for the local llama-server | 8083 |
 | **Muse** | Discord music bot | — |
 | **Vert** | File converter | 3002 |
+
+### Bare-metal (no Docker)
+
+| Service | Description | Port |
+|---------|-------------|------|
+| **llama-cpp** | Local LLM inference server (Apple Metal) | 8001 |
+
+**Why not Docker?** Docker Desktop / Colima on macOS can't pass the Apple GPU through to containers, so Metal acceleration is unavailable inside containers. `llama.cpp` is built and run directly on the host to get full GPU acceleration. Open WebUI (in Docker) reaches it via `host.docker.internal:8001`.
+
+Setup and run:
+```bash
+./llama-cpp/llama-server-setup.sh        # build llama.cpp with Metal
+./llama-cpp/llama-server-start.sh 35b    # start server (models: 4b | 35b | coder-next)
+```
 
 ### Game servers (on-demand)
 
@@ -28,19 +45,19 @@ Managed via CLI from the `games/` directory.
 
 | Service | Port |
 |---------|------|
+| **Minecraft** (All the Mods 9) | 25565 |
 | **Project Zomboid** | — |
 
 ## Remote Access
 
-### Web services & management — Twingate
+### Private (web UIs, SSH) — Twingate
+Web UIs, management ports, and SSH are reached via **Twingate**. No ports are exposed to the internet. Install the Twingate client, authenticate, and reach services at their `localhost` address. Define a Resource per service in the Twingate admin console (e.g. `localhost:3000` for Homepage, `localhost:5001` for Dockge).
 
-Web UIs, management ports, and SSH are accessed via **Twingate**. No ports are exposed to the internet. Install the Twingate client, authenticate, and reach services directly at their `localhost` address.
+### Public web — Cloudflare Tunnel
+Services that need public ingress (no client required) are fronted by a **Cloudflare Tunnel**. Routes are configured in the Cloudflare Zero Trust dashboard; the local connector runs via `cloudflare-tunnel/docker-compose.yaml`.
 
-Define Resources in the Twingate admin console for each service you want to access remotely (e.g. `localhost:3000` for Homepage, `localhost:5001` for Dockge).
-
-### Game servers — port forwarding
-
-Game servers are not routed through Twingate. Players connect directly via router port forwarding. Each game's port is documented in its `docker-compose.yaml`.
+### Game servers — Playit
+Game servers are exposed via **Playit** tunnels (`playit/`), so players don't need router port forwarding. Each game's container port is documented in its `docker-compose.yaml`.
 
 ## Installation
 
@@ -76,6 +93,8 @@ All secrets live in `.env` (git-ignored). Required variables:
 | `TWINGATE_REFRESH_TOKEN` | Connector refresh token from Twingate console |
 | `HOMEPAGE_AUTH_TOKEN` | Homepage auth token (auto-generated) |
 | `SPEEDTEST_APP_KEY` | Speedtest app key (auto-generated) |
+| `CLOUDFLARE_TUNNEL_TOKEN` | Connector token from Cloudflare Zero Trust |
+| `PLAYIT_SECRET_KEY` | Agent secret from playit.gg |
 
 ## Adding a Service
 
@@ -101,11 +120,16 @@ homelab/
 │
 ├── dockge/               # Stack management UI
 ├── homepage/             # Dashboard + Glances + Speedtest
-├── twingate/             # Remote access connector
+├── twingate/             # Private remote access connector
+├── cloudflare-tunnel/    # Public ingress (Cloudflare Zero Trust)
+├── playit/               # Game server tunnel (playit.gg)
+├── ollama_openwebui/     # Open WebUI for llama-server
+├── llama-cpp/            # Bare-metal LLM server (Apple Metal, no Docker)
 ├── muse/                 # Discord music bot
 ├── vert/                 # File converter
 │
 └── games/                # Game servers (managed via CLI)
+    ├── minecraft/        # All the Mods 9
     └── zomboid/
 ```
 

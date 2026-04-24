@@ -32,4 +32,12 @@ dockge/data/*
 trash/
 games/zomboid/workshop-mods/
 games/zomboid/data/
+games/minecraft/data/
 vert/vert-source/
+
+# Open WebUI runtime data
+ollama_openwebui/data/
+
+# llama.cpp build artifacts and model weights (multi-GB)
+llama-cpp/llama.cpp/
+llama-cpp/models/

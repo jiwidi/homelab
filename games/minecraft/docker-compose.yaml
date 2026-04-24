@@ -1,0 +1,56 @@
+name: minecraft-server
+
+services:
+  minecraft-server:
+    build:
+      context: .
+      platforms:
+        - linux/arm64
+    image: minecraft-server-all-the-mods-9-bootstrap:1.1.1
+    container_name: minecraft-server
+    restart: unless-stopped
+    stop_grace_period: 5m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    ports:
+      - "25565:25565"
+    environment:
+      EULA: "TRUE"
+      TZ: Europe/Stockholm
+      MINECRAFT_SERVER_PORT: "25565"
+      MINECRAFT_SERVER_BACKUP_ENABLED: "${MINECRAFT_SERVER_BACKUP_ENABLED:-true}"
+      MINECRAFT_SERVER_BACKUP_INTERVAL_SECONDS: "${MINECRAFT_SERVER_BACKUP_INTERVAL_SECONDS:-21600}"
+      MINECRAFT_SERVER_BACKUP_DIR: "${MINECRAFT_SERVER_BACKUP_DIR:-/data/backups}"
+      MINECRAFT_SERVER_BACKUP_RETENTION: "${MINECRAFT_SERVER_BACKUP_RETENTION:-8}"
+      MINECRAFT_SERVER_BACKUP_SCOPE: "${MINECRAFT_SERVER_BACKUP_SCOPE:-world}"
+      MINECRAFT_SERVER_BACKUP_QUIESCE_SECONDS: "${MINECRAFT_SERVER_BACKUP_QUIESCE_SECONDS:-5}"
+      MINECRAFT_SERVER_MIN_MEMORY: "${MINECRAFT_SERVER_MIN_MEMORY:-4G}"
+      MINECRAFT_SERVER_MAX_MEMORY: "${MINECRAFT_SERVER_MAX_MEMORY:-8G}"
+      MINECRAFT_SERVER_ONLINE_MODE: "true"
+      MINECRAFT_SERVER_PREVENT_PROXY_CONNECTIONS: "false"
+      MINECRAFT_SERVER_ENABLE_RCON: "${MINECRAFT_SERVER_ENABLE_RCON:-false}"
+      MINECRAFT_SERVER_ENABLE_QUERY: "${MINECRAFT_SERVER_ENABLE_QUERY:-false}"
+      MINECRAFT_SERVER_ENFORCE_SECURE_PROFILE: "${MINECRAFT_SERVER_ENFORCE_SECURE_PROFILE:-true}"
+      MINECRAFT_SERVER_WHITELIST_ENABLED: "false"
+      MINECRAFT_SERVER_RATE_LIMIT: "${MINECRAFT_SERVER_RATE_LIMIT:-0}"
+    volumes:
+      - minecraft-server-data:/data
+      - minecraft-server-cache:/cache
+    networks:
+      default: {}
+      playit-net:
+        ipv4_address: 172.40.0.10
+
+volumes:
+  minecraft-server-data:
+    name: minecraft-server-data
+  minecraft-server-cache:
+    name: minecraft-server-cache
+
+networks:
+  playit-net:
+    external: true

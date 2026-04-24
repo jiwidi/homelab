@@ -1,0 +1,15 @@
+name: playit
+
+services:
+  playit:
+    image: ghcr.io/playit-cloud/playit-agent:latest
+    container_name: playit
+    restart: unless-stopped
+    networks:
+      - playit-net
+    environment:
+      - SECRET_KEY=${PLAYIT_SECRET_KEY}
+
+networks:
+  playit-net:
+    external: true
