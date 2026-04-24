@@ -22,7 +22,7 @@ cmake "$LLAMA_DIR" -B "$LLAMA_DIR/build" \
     -DGGML_CUDA=OFF
 
 cmake --build "$LLAMA_DIR/build" --config Release -j --clean-first \
-    --target llama-cli llama-server
+    --target llama-cli llama-mtmd-cli llama-server llama-gguf-split
 
 cp "$LLAMA_DIR/build/bin/llama-cli" "$LLAMA_DIR/"
 cp "$LLAMA_DIR/build/bin/llama-server" "$LLAMA_DIR/"
@@ -30,10 +30,10 @@ cp "$LLAMA_DIR/build/bin/llama-server" "$LLAMA_DIR/"
 echo ""
 echo "Done! llama-server is at: $LLAMA_DIR/llama-server"
 echo ""
-echo "Next: download the model with:"
+echo "Next: download Qwen3.6-27B (dense, ~15GB — default, leaves room for KV on 32GB):"
 echo "  HF_HUB_ENABLE_HF_TRANSFER=1 uv run --with huggingface_hub --with hf_transfer \\"
-echo "      hf download unsloth/Qwen3.5-35B-A3B-GGUF \\"
-echo "      --local-dir $SCRIPT_DIR/models/Qwen3.5-35B-A3B-GGUF \\"
-echo "      --include '*UD-Q4_K_XL*'"
+echo "      hf download unsloth/Qwen3.6-27B-GGUF \\"
+echo "      --local-dir $SCRIPT_DIR/models/Qwen3.6-27B-GGUF \\"
+echo "      --include '*UD-Q4_K_XL*' --include '*mmproj-F16*'"
 echo ""
 echo "Then start the server with: ./llama-server-start.sh"

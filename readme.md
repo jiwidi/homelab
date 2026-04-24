@@ -33,10 +33,21 @@ Docker configurations and install scripts for my personal homelab on a Mac Mini 
 
 **Why not Docker?** Docker Desktop / Colima on macOS can't pass the Apple GPU through to containers, so Metal acceleration is unavailable inside containers. `llama.cpp` is built and run directly on the host to get full GPU acceleration. Open WebUI (in Docker) reaches it via `host.docker.internal:8001`.
 
+Runs **Qwen3.6** via Unsloth GGUFs with the precise-coding sampling params from the Unsloth guide (thinking on, temp=0.6, top_p=0.95). Defaults to the dense **27B** (~15GB Q4) — smaller RAM footprint than the 35B-A3B MoE, leaving headroom for KV cache on a 32GB Mac. Exposes an Anthropic-compatible API on `:8001` for use with Claude Code.
+
 Setup and run:
 ```bash
 ./llama-cpp/llama-server-setup.sh        # build llama.cpp with Metal
-./llama-cpp/llama-server-start.sh 35b    # start server (models: 4b | 35b | coder-next)
+./llama-cpp/llama-server-start.sh        # default: 27b, thinking on
+./llama-cpp/llama-server-start.sh 35b    # heavier MoE (higher quality, ~20GB)
+./llama-cpp/llama-server-start.sh 27b off           # non-thinking general
+./llama-cpp/llama-server-start.sh 27b budget=512    # thinking hard-capped at 512 tokens
+```
+
+Point Claude Code at it:
+```bash
+ANTHROPIC_BASE_URL=http://localhost:8001 ANTHROPIC_API_KEY=sk-no-key-required \
+  claude --model unsloth/Qwen3.6-27B
 ```
 
 ### Game servers (on-demand)
