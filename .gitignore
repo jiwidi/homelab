@@ -1,4 +1,8 @@
 # Ignore config folders
+# NOTE: matches a dir named `config` at ANY depth, which is what keeps the
+# media stack's app state out of this PUBLIC repo -- arr/config/ holds
+# gluetun's WireGuard key, the *arr config.xml API keys, and qBittorrent's
+# credentials. Do not narrow this rule to a top-level path.
 config/
 bluemap-data/
 backups/
@@ -30,14 +34,16 @@ pids
 # Specific folders
 dockge/data/*
 trash/
-games/zomboid/workshop-mods/
-games/zomboid/data/
-games/minecraft/data/
 vert/vert-source/
 
 # Open WebUI runtime data
 ollama_openwebui/data/
 
-# llama.cpp build artifacts and model weights (multi-GB)
-llama-cpp/llama.cpp/
-llama-cpp/models/
+# Unsloth model weights (multi-GB)
+unsloth/models/
+
+# oMLX — kept on disk and running, deliberately not tracked in this repo
+omlx/
+
+# Local Claude Code settings (machine-specific)
+.claude/

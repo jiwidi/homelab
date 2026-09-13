@@ -1,0 +1,156 @@
+# Media automation stack: Prowlarr -> Sonarr/Radarr -> qBittorrent -> Jellyfin
+#
+# Jellyfin is NOT in this file. It runs NATIVELY on macOS (brew install jellyfin)
+# because Docker Desktop cannot pass the Apple GPU through to containers, so a
+# containerised Jellyfin would have no VideoToolbox and would transcode on CPU
+# only. Same reason llama-cpp runs bare-metal in this repo. See README.md.
+#
+# NETWORK TOPOLOGY
+#   qbittorrent and prowlarr share gluetun's network namespace, so ALL their
+#   traffic leaves via Mullvad WireGuard and gluetun's firewall acts as a kill
+#   switch -- if the tunnel drops they lose connectivity entirely rather than
+#   falling back to the home IP.
+#
+#   Because they share the namespace they have NO hostname of their own on the
+#   docker network. Sonarr/Radarr must reach them as `gluetun:8082` and
+#   `gluetun:9696`, NOT `qbittorrent:8082`. Their ports are published on the
+#   gluetun service below, not on the containers themselves.
+#
+# STORAGE
+#   Every container that moves media gets ONE mount: ~/Videos/library -> /data.
+#   Not separate /downloads and /media mounts. Sonarr/Radarr detect "same
+#   filesystem" by comparing mount points, so splitting them silently disables
+#   hardlinking and turns every import into a full byte copy. With the single
+#   mount, imports are instant and the file exists once while seeding.
+#   Verified working on this host: APFS + VirtioFS bind mounts support hardlinks.
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    # A DEVICE, not a volume. A bind mount would resolve on the macOS
+    # filesystem, which has no /dev/net/tun; `devices:` resolves inside Docker's
+    # Linux VM, which does. Same fix as tailscale/docker-compose.yaml.
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "8082:8082"   # qbittorrent web UI  (published here, see note above)
+      - "9696:9696"   # prowlarr web UI     (published here, see note above)
+    environment:
+      - VPN_SERVICE_PROVIDER=mullvad
+      # WireGuard only. Mullvad shut down every OpenVPN server on 2026-01-15,
+      # so there is no OpenVPN fallback to configure.
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY:?Need WIREGUARD_PRIVATE_KEY in .env}
+      # IPv4 ONLY. Mullvad configs list "10.x.x.x/32,fc00:.../128"; gluetun
+      # cannot parse the IPv6 half and fails to bring the interface up.
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES:?Need WIREGUARD_ADDRESSES in .env}
+      - SERVER_CITIES=${MULLVAD_CITY:-Stockholm}
+      # Without this, gluetun's firewall drops the replies to web UI requests
+      # coming from the LAN / docker bridge and both UIs hang. 172.16/12 covers
+      # the docker bridge; the 192.168.31.0/24 entry is this house's LAN, which
+      # is also what the tailscale container proxies from.
+      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.31.0/24
+      - TZ=${TZ}
+    volumes:
+      - ./config/gluetun:/gluetun
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8082
+    volumes:
+      - ./config/qbittorrent:/config
+      - ${MEDIA_ROOT}:/data
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    # Behind the VPN deliberately: with public indexers, every search query
+    # would otherwise hit the tracker from the home IP. Trade-off is that
+    # Prowlarr goes unreachable whenever the tunnel is down. Move it to the
+    # default network (drop network_mode/depends_on, add `ports: 9696:9696`,
+    # remove 9696 from gluetun) if you'd rather have it always reachable.
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./config/prowlarr:/config
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    ports:
+      - "8989:8989"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./config/sonarr:/config
+      - ${MEDIA_ROOT}:/data
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    ports:
+      - "7878:7878"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./config/radarr:/config
+      - ${MEDIA_ROOT}:/data
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    ports:
+      - "6767:6767"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./config/bazarr:/config
+      - ${MEDIA_ROOT}:/data
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    restart: unless-stopped
+    ports:
+      - "5055:5055"
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+    volumes:
+      - ./config/jellyseerr:/app/config
+    # Jellyfin runs on the macOS host, not in this network, so jellyseerr
+    # reaches it at host.docker.internal:8096. Docker Desktop provides that
+    # name automatically on macOS; the extra_hosts entry is belt-and-braces
+    # for the Colima path, where it is not always present.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
