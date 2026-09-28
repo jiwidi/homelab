@@ -6,14 +6,6 @@ parts (Colima, Metal LLM server, native Jellyfin) are noted as such below.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-## Hardware
-
-- **sol** — 28 threads, 62 GB RAM, Intel UHD 770 iGPU, 3.5 TB NVMe `/home`. Debian 13.
-  LAN `192.168.2.92` on the UniFi `gamelab` network (isolated from `galaxy`).
-- **truenas** — `192.168.1.60` on `galaxy`. Runs the media stack (Jellyfin,
-  Seerr, Sonarr/Radarr/Bazarr/Prowlarr, Transmission) and the SMB shares.
-- *(retired)* **luna** — Mac Mini M4, 32 GB RAM, `192.168.1.169`.
-
 ## Boot / crash recovery
 
 Docker and containerd are enabled systemd units, and every service uses
