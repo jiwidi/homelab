@@ -1,12 +1,27 @@
 # My Personal Homelab
 
-Docker configurations and install scripts for my personal homelab on a Mac Mini M4.
+Docker configurations and install scripts for my personal homelab, running on
+**sol** (Debian 13). It previously ran on a Mac Mini M4 (`luna`); the macOS-only
+parts (Colima, Metal LLM server, native Jellyfin) are noted as such below.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## Hardware
 
-- **Mac Mini M4** — Apple M4, 32GB RAM, [2TB custom Chinese NVMe](https://item.taobao.com/item.htm?abbucket=14&id=874377707144&ns=1&priceTId=2100c80417368883046408893e0be2&skuId=5882661866398&spm=a21n57.1.hoverItem.2&utparam=%7B%22aplus_abtest%22%3A%22741a06251058619e3d5eda8db6a4078b%22%7D&xxc=taobaoSearch) replacing the internal 256GB SSD
+- **sol** — 28 threads, 62 GB RAM, Intel UHD 770 iGPU, 3.5 TB NVMe `/home`. Debian 13.
+  LAN `192.168.2.92` on the UniFi `gamelab` network (isolated from `galaxy`).
+- **truenas** — `192.168.1.60` on `galaxy`. Runs the media stack (Jellyfin,
+  Seerr, Sonarr/Radarr/Bazarr/Prowlarr, Transmission) and the SMB shares.
+- *(retired)* **luna** — Mac Mini M4, 32 GB RAM, `192.168.1.169`.
+
+## Boot / crash recovery
+
+Docker and containerd are enabled systemd units, and every service uses
+`restart: unless-stopped`, so after a power loss or crash every stack comes back
+by itself. The one exception is by design: a stack you stopped yourself
+(`docker compose stop`, or Stop in Dockge) stays stopped across reboots —
+`start` it again to re-enable. Game servers live in the separate
+[gamelab](https://github.com/jiwidi/gamelab) repo and follow the same rule.
 
 ## Services
 
@@ -81,16 +96,14 @@ ANTHROPIC_BASE_URL=http://localhost:8001 ANTHROPIC_API_KEY=$LLM_API_KEY \
 ### Private (web UIs, SSH) — Twingate
 Web UIs, management ports, and SSH are reached via **Twingate**. No ports are exposed to the internet. Install the Twingate client, authenticate, and reach services at their `localhost` address. Define a Resource per service in the Twingate admin console (e.g. `localhost:3000` for Homepage, `localhost:5001` for Dockge).
 
-### Tailnet (media, SSH) — Tailscale
-The `tailscale/` container joins the tailnet as **`luna`** and acts as a subnet
-router (advertising `192.168.31.0/24`) and opt-in exit node. This is how other
-people reach Jellyfin at `luna:8096` and Jellyseerr at `luna:5055`.
-
-Exposed ports are declared in [`tailscale/serve.json`](tailscale/serve.json),
-applied by containerboot on startup. Two constraints worth knowing: the Mac's
-LAN IP is hardcoded there (compose can't interpolate into a mounted file), so a
-DHCP change means editing that file; and only services bound to *all* interfaces
-work — anything on `127.0.0.1` is unreachable via the LAN IP.
+### Tailnet — Tailscale
+The `tailscale/` container runs in host network mode, so **sol itself** is the
+tailnet node `sol`: every port on it is reachable at `sol:<port>`. It also
+advertises a subnet route to the NAS only (`192.168.1.60/32`), putting every
+NAS port — SMB, TrueNAS UI, Jellyfin, Seerr, the \*arrs — at
+`192.168.1.60:<port>` from anywhere on the tailnet, plus an opt-in exit node.
+Needs a UniFi rule allowing sol → NAS; see
+[`tailscale/README.md`](tailscale/README.md).
 
 ### Public web — Cloudflare Tunnel
 Services that need public ingress (no client required) are fronted by a **Cloudflare Tunnel**. Routes are configured in the Cloudflare Zero Trust dashboard; the local connector runs via `cloudflare-tunnel/docker-compose.yaml`.
@@ -99,7 +112,8 @@ Services that need public ingress (no client required) are fronted by a **Cloudf
 
 > Run once on a fresh machine. After that, use **Dockge** at `:5001` for day-to-day management.
 
-**Prerequisites:** macOS, internet connection.
+**Prerequisites:** Docker Engine + compose plugin (`master_install.sh` is still
+the macOS/Homebrew bootstrap; on Linux, run each stack's `install.sh` directly).
 
 ```bash
 git clone https://github.com/jiwidi/homelab.git
