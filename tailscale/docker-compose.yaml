@@ -3,64 +3,44 @@ services:
     image: tailscale/tailscale:latest
     container_name: tailscale
     restart: unless-stopped
-    hostname: luna
+    hostname: sol
+    # Linux host (sol): share the host's network namespace so the PC ITSELF is
+    # the tailnet node. Every port bound on sol (ssh, samba, dockge, game
+    # servers, ...) is reachable at sol:<port> with no per-port forwarders.
+    # The macOS setup needed serve.json forwarders only because Docker
+    # Desktop's VM sat between the container and the Mac -- not the case here.
+    network_mode: host
     volumes:
       - ./config:/var/lib/tailscale
-      # Port forwarders, declaratively. Read-only: containerboot only ever
-      # applies this file, it never writes back.
-      - ./serve.json:/config/serve.json:ro
-    # /dev/net/tun must be a DEVICE, not a volume. The original compose bind-
-    # mounted it, which fails on macOS: bind mounts resolve on the Mac
-    # filesystem (no such device), whereas `devices:` resolves inside Docker's
-    # Linux VM, which does have tun. Kernel mode is required because TS_DEST_IP
-    # is not supported with TS_USERSPACE.
     devices:
       - /dev/net/tun:/dev/net/tun
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    # Required for subnet routing / exit-node. The image sets ipv4 forwarding
-    # itself but leaves ipv6 at 0, which makes tailscale report
-    # "Subnet routing is enabled, but IP forwarding is disabled" because we
-    # advertise ::/0 as well. Set both explicitly.
-    sysctls:
-      - net.ipv4.ip_forward=1
-      - net.ipv6.conf.all.forwarding=1
+    # No `sysctls:` -- they are rejected with network_mode: host. Forwarding
+    # is a HOST setting: ipv4 is already 1 (docker enables it); ipv6 needs
+    # /etc/sysctl.d/99-tailscale.conf, see README.md.
     environment:
       - TS_AUTHKEY=${TAILSCALE_AUTH_KEY}
       - TS_STATE_DIR=/var/lib/tailscale
-      # Must be explicit: the image DEFAULTS to userspace mode, and simply
-      # omitting this leaves TS_DEST_IP rejected with
-      # "TS_DEST_IP is not supported with TS_USERSPACE".
+      # Kernel mode (tailscale0 on the host). The image defaults to userspace.
       - TS_USERSPACE=false
-      # NOTE: TS_DEST_IP was tried here and does NOT work under Docker Desktop
-      # on macOS. It DNATs correctly *inside* the container (verified: rule hit
-      # 3x, packets masqueraded, ts-forward ACCEPTed) but the VM's network layer
-      # does not pass FORWARDED traffic out to the LAN -- only container-
-      # ORIGINATED connections survive. Symptom: silent hang, SYN retries, and
-      # the request never reaches the Mac. Replaced by the serve.json TCP
-      # forwarders below, which terminate the connection in the container and
-      # open a fresh container-originated connection to the backend.
-      #
-      # Every exposed port lives in ./serve.json -- containerboot applies it on
-      # startup, so the forwarders are rebuilt from the file even if config/ is
-      # wiped. TRADE-OFF vs TS_DEST_IP: only the listed ports are exposed, and
-      # the Mac's LAN IP is hardcoded there (compose cannot interpolate into a
-      # mounted file), so a DHCP change means editing serve.json.
-      # Only services bound to ALL interfaces on the Mac work; anything on
-      # 127.0.0.1 (e.g. dockerproxy :2375) is unreachable via the LAN IP.
-      - TS_SERVE_CONFIG=/config/serve.json
-      # Renamed homelab-mac -> luna. Tailscale only auto-applies this if the
-      # machine name was never set by hand in the admin console; if the node
-      # still shows as homelab-mac after a restart, rename it there once.
-      - TS_HOSTNAME=luna
-      # Subnet router: advertise the whole home LAN (mask 0xffffff00 = /24, gw
-      # 192.168.31.1) so tailnet clients can reach EVERY device on it -- router,
-      # NAS, printers, other hosts -- not just this Mac.
-      - TS_ROUTES=192.168.31.0/24
+      # Must match the host's firewall backend. Debian 13's docker uses
+      # iptables-nft with FORWARD policy DROP; the image autodetects legacy
+      # iptables, so its ts-forward ACCEPTs land in the legacy table and
+      # docker's nft DROP still eats every subnet-routed packet (symptom:
+      # tailnet clients time out on 192.168.1.60, "policy DROP" counter rises).
+      - TS_DEBUG_FIREWALL_MODE=nftables
+      - TS_HOSTNAME=sol
+      # Subnet route to the TrueNAS box ONLY (a /32, not the whole galaxy
+      # LAN), so tailnet clients reach every NAS port -- SMB, web UI, Jellyfin,
+      # *arr -- at 192.168.1.60:<port>. sol sits on the isolated `gamelab`
+      # network, so this only passes traffic once the UniFi firewall allows
+      # 192.168.2.92 -> 192.168.1.60. See README.md.
+      - TS_ROUTES=192.168.1.60/32
       # --accept-dns=false so the container doesn't fight the host resolver.
       # --advertise-exit-node lets tailnet clients route all internet traffic
-      #   through this house (opt-in per client; it is not automatic).
-      # BOTH routes and exit-node require one-time approval in the admin console:
-      #   https://login.tailscale.com/admin/machines -> luna -> ... -> Edit route settings
+      #   through this house (opt-in per client).
+      # Routes and exit node both need one-time approval in the admin console:
+      #   https://login.tailscale.com/admin/machines -> sol -> Edit route settings
       - TS_EXTRA_ARGS=--accept-dns=false --advertise-exit-node
