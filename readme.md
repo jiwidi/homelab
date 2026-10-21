@@ -88,14 +88,10 @@ ANTHROPIC_BASE_URL=http://localhost:8001 ANTHROPIC_API_KEY=$LLM_API_KEY \
 Web UIs, management ports, and SSH are reached via **Twingate**. No ports are exposed to the internet. Install the Twingate client, authenticate, and reach services at their `localhost` address. Define a Resource per service in the Twingate admin console (e.g. `localhost:3000` for Homepage, `localhost:5001` for Dockge).
 
 ### Tailnet — Tailscale
-Tailscale runs on the **UniFi gateway** (`ucg-fiber`), not on sol, so remote
-access only needs the router up. It routes two hosts into the tailnet:
-
-- `192.168.1.60` — the NAS (SMB, TrueNAS UI, Jellyfin, Seerr, the \*arrs)
-- `192.168.2.92` — sol (ssh, Dockge `:5001`, samba, game servers)
-
-Its config lives in a separate private repo; see
-[`tailscale/README.md`](tailscale/README.md).
+Tailscale is **not** managed in this repo. It runs on the network gateway, and
+its configuration (routes, exit node, access) lives in a separate **private**
+repository, kept out of this public one for security. Nothing in this repo
+depends on it.
 
 ### Public web — Cloudflare Tunnel
 Services that need public ingress (no client required) are fronted by a **Cloudflare Tunnel**. Routes are configured in the Cloudflare Zero Trust dashboard; the local connector runs via `cloudflare-tunnel/docker-compose.yaml`.
@@ -170,7 +166,6 @@ homelab/
 ├── master_install.sh     # One-time bootstrap script
 │
 ├── arr/                  # Media automation (Prowlarr/Sonarr/Radarr/qBit/Jellyseerr)
-├── tailscale/            # Tailnet notes (runs on the UniFi gateway) + macOS NAS helper
 ├── unsloth/              # Bare-metal LLM server (Apple Metal, no Docker)
 │
 ├── dockge/               # Stack management UI
