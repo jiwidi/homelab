@@ -1,7 +1,7 @@
 # My Personal Homelab
 
 Docker configurations and install scripts for my personal homelab, running on
-**sol** (Debian 13). It previously ran on a Mac Mini M4 (`luna`); the macOS-only
+**sol** (Debian 13). It previously ran on a Mac Mini M4; the macOS-only
 parts (Colima, Metal LLM server, native Jellyfin) are noted as such below.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
