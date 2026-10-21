@@ -1,4 +1,4 @@
-# Tailscale — VPN access to sol (and the NAS)
+# Tailscale — VPN access to sol
 
 Runs as a Docker container (dockge-managed, like the rest of the homelab) in
 `network_mode: host`, so **sol itself is the tailnet node**.
@@ -13,7 +13,6 @@ docker exec tailscale tailscale status
 | Tailnet name | `sol` |
 | Tailnet IP | `100.110.134.79` |
 | LAN IP | `192.168.2.92` (`gamelab` network) |
-| Subnet route | `192.168.1.60/32` — the TrueNAS box on `galaxy` |
 
 Secrets live in `.env` (gitignored); node state in `config/` (gitignored — it
 contains `tailscaled.state` with the node key, never commit it).
@@ -24,8 +23,20 @@ contains `tailscaled.state` with the node key, never commit it).
 5001, the game servers, etc. No port list to maintain: unlike the old Mac
 setup, there is no VM between the container and the host.
 
-**Every port on the NAS**, at `192.168.1.60:<port>`, via the `/32` subnet
-route (only the NAS, not the rest of `galaxy`):
+sol advertises **no subnet routes and no exit node**. Those live on the UniFi
+gateway — see below.
+
+## The NAS and the exit node: on the gateway, not here
+
+The UniFi Cloud Gateway Fiber runs Tailscale itself as **`ucg-fiber`**
+(`100.123.251.41`), via the unofficial
+[tailscale-unifi](https://github.com/SierraSoftworks/tailscale-unifi) package.
+It is the subnet router for the NAS (`192.168.1.60/32`) and the house's exit
+node, so remote access depends only on the router being up — not on sol. Its
+config lives in the private `unifi-gateway` repo (edit, push, then
+`ssh root@100.123.251.41 /data/unifi-gateway/sync.sh`).
+
+Every NAS port is reachable from the tailnet at `192.168.1.60:<port>`:
 
 | Port | Service |
 |---|---|
@@ -41,49 +52,38 @@ route (only the NAS, not the rest of `galaxy`):
 no password. Anyone on the tailnet who can use the route can reach them — set
 Forms auth / a password on each, or restrict the route with a tailnet ACL.
 
-Discovery ports (mDNS 5353, WS-Discovery 3702/5357) are multicast and don't
-cross a routed tailnet, so the NAS won't auto-appear in Finder/Explorer;
-connect by IP.
-
-### ⚠️ Prerequisite: gamelab → galaxy firewall rule
-
-sol is on the `gamelab` network, which the UniFi gateway isolates from
-`galaxy` — sol cannot even ping the NAS. Until that changes, the route is
-advertised but carries nothing. Add a UniFi firewall rule allowing
-**source 192.168.2.92 → destination 192.168.1.60** (any port, or just the ones
-above). Keep the rest of the isolation: sol runs internet-facing game servers.
-
-Test from sol: `timeout 2 bash -c '</dev/tcp/192.168.1.60/445' && echo ok`
-
-### ⚠️ Routes need one-time approval
-
-<https://login.tailscale.com/admin/machines> → `sol` → **⋯** → *Edit route
-settings* → enable `192.168.1.60/32` and "Use as exit node".
-
 Clients on Linux must opt in with `tailscale up --accept-routes`
 (macOS/iOS/Windows accept routes by default).
 
-### Firewall backend: nftables
+Discovery ports (mDNS 5353, WS-Discovery 3702/5357) are multicast and don't
+cross a routed tailnet, so the NAS won't auto-appear in Finder/Explorer on its
+own. On a Mac, [`macos/nas-bonjour.sh`](macos/nas-bonjour.sh) installs a
+LaunchAgent that announces it locally, so **TrueNAS (Tailscale)** shows up
+under Finder → Network anywhere. Elsewhere, connect by IP
+(`smb://192.168.1.60`).
 
-`TS_DEBUG_FIREWALL_MODE=nftables` in the compose file is required. Debian 13's
-Docker uses iptables-nft with `FORWARD` policy `DROP`; the tailscale image
-autodetects *legacy* iptables, so its accept rules land in the wrong table and
-Docker drops every subnet-routed packet. Symptom: tailnet clients time out on
-`192.168.1.60` while sol itself reaches the NAS fine, and the drop counter in
-`docker exec tailscale iptables-nft -L FORWARD -v -n` climbs.
+sol sits on the `gamelab` network, which the gateway isolates from `galaxy`
+(sol runs internet-facing game servers). Since sol no longer routes to the
+NAS, it needs no firewall exception to reach it.
 
-### IPv6 forwarding (exit node)
+## If sol ever routes again
 
-`sysctls:` can't be set with `network_mode: host`, so forwarding is a host
-setting. IPv4 is already on (docker enables it); IPv6 needs root, once:
+Notes from when sol was the subnet router, in case routes move back here:
 
-```bash
-echo -e 'net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1' \
-  | sudo tee /etc/sysctl.d/99-tailscale.conf && sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
-```
-
-Until then tailscale logs "Subnet routing is enabled, but IP forwarding is
-disabled" (it's the IPv6 half); the IPv4 NAS route and IPv4 exit traffic work.
+- **`TS_DEBUG_FIREWALL_MODE=nftables` is required.** Debian 13's Docker uses
+  iptables-nft with `FORWARD` policy `DROP`; the tailscale image autodetects
+  *legacy* iptables, so its accept rules land in the wrong table and Docker
+  drops every subnet-routed packet. Symptom: tailnet clients time out while sol
+  itself reaches the target fine, and the drop counter in
+  `docker exec tailscale iptables-nft -L FORWARD -v -n` climbs.
+- **IPv6 forwarding** for an exit node is a host setting (`sysctls:` can't be
+  set with `network_mode: host`). IPv4 is already on via docker; IPv6 needs:
+  ```bash
+  echo -e 'net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1' \
+    | sudo tee /etc/sysctl.d/99-tailscale.conf && sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
+  ```
+- Reaching anything on `galaxy` from sol needs a UniFi firewall rule
+  `192.168.2.92 → <target>`.
 
 ## Auth keys
 
@@ -95,5 +95,4 @@ authenticated via `config/tailscaled.state` afterwards. Rotate keys at
 
 The Mac mini ran this as `luna` with per-port `serve.json` forwarders to
 `192.168.31.58`, needed because Docker Desktop's VM dropped forwarded traffic.
-`luna` still exists in the tailnet (offline) — remove it in the admin console
-once the Mac is retired so it stops offering a stale exit node.
+sol then served as the subnet router until it moved to the gateway.

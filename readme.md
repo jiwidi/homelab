@@ -90,12 +90,12 @@ Web UIs, management ports, and SSH are reached via **Twingate**. No ports are ex
 
 ### Tailnet — Tailscale
 The `tailscale/` container runs in host network mode, so **sol itself** is the
-tailnet node `sol`: every port on it is reachable at `sol:<port>`. It also
-advertises a subnet route to the NAS only (`192.168.1.60/32`), putting every
-NAS port — SMB, TrueNAS UI, Jellyfin, Seerr, the \*arrs — at
-`192.168.1.60:<port>` from anywhere on the tailnet, plus an opt-in exit node.
-Needs a UniFi rule allowing sol → NAS; see
-[`tailscale/README.md`](tailscale/README.md).
+tailnet node `sol`: every port on it is reachable at `sol:<port>`.
+
+The NAS route (`192.168.1.60/32` — SMB, TrueNAS UI, Jellyfin, Seerr, the
+\*arrs) and the exit node run on the **UniFi gateway** (`ucg-fiber`), so remote
+access only needs the router up. Its config lives in a separate private repo;
+see [`tailscale/README.md`](tailscale/README.md).
 
 ### Public web — Cloudflare Tunnel
 Services that need public ingress (no client required) are fronted by a **Cloudflare Tunnel**. Routes are configured in the Cloudflare Zero Trust dashboard; the local connector runs via `cloudflare-tunnel/docker-compose.yaml`.

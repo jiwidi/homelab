@@ -32,15 +32,8 @@ services:
       # tailnet clients time out on 192.168.1.60, "policy DROP" counter rises).
       - TS_DEBUG_FIREWALL_MODE=nftables
       - TS_HOSTNAME=sol
-      # Subnet route to the TrueNAS box ONLY (a /32, not the whole galaxy
-      # LAN), so tailnet clients reach every NAS port -- SMB, web UI, Jellyfin,
-      # *arr -- at 192.168.1.60:<port>. sol sits on the isolated `gamelab`
-      # network, so this only passes traffic once the UniFi firewall allows
-      # 192.168.2.92 -> 192.168.1.60. See README.md.
-      - TS_ROUTES=192.168.1.60/32
+      # No TS_ROUTES / exit node: the UniFi gateway (ucg-fiber, private
+      # unifi-gateway repo) is the subnet router for the NAS and the exit node,
+      # so remote access doesn't depend on sol being up. sol is a plain node.
       # --accept-dns=false so the container doesn't fight the host resolver.
-      # --advertise-exit-node lets tailnet clients route all internet traffic
-      #   through this house (opt-in per client).
-      # Routes and exit node both need one-time approval in the admin console:
-      #   https://login.tailscale.com/admin/machines -> sol -> Edit route settings
-      - TS_EXTRA_ARGS=--accept-dns=false --advertise-exit-node
+      - TS_EXTRA_ARGS=--accept-dns=false
