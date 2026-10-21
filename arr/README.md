@@ -110,8 +110,8 @@ together or the tunnel comes up silently and passes no traffic at all
 
 ## Remote access
 
-Ports are exposed on the tailnet by `../tailscale/serve.json`. Everyone gets
-Jellyfin at `luna:8096` and Jellyseerr at `luna:5055`.
+Remote access is handled outside this repo (see the main README). The media
+stack now runs on the NAS, not from this compose file.
 
 ## Config
 
